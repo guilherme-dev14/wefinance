@@ -14,7 +14,7 @@
     <ProjectReference Include="..\WeFinance.Core\WeFinance.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Abp.EntityFrameworkCore" Version="8.4.0" />
-    <PackageReference Include="Abp.AutoMapper" Version="8.4.0" />
+    <PackageReference Include="Abp.EntityFrameworkCore" Version="7.4.0" />
+    <PackageReference Include="Abp.AutoMapper" Version="7.4.0" />
   </ItemGroup>
 </Project>

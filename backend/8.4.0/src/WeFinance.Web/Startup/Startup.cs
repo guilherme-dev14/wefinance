@@ -1,74 +1,60 @@
-﻿using System;
-using Abp.AspNetCore;
-using Abp.Castle.Logging.Log4Net;
-using Abp.EntityFrameworkCore;
-using WeFinance.EntityFrameworkCore;
-using Castle.Facilities.Logging;
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using WeFinance.EntityFrameworkCore;
 
 namespace WeFinance.Web.Startup
 {
     public class Startup
     {
-    
-        private readonly IWebHostEnvironment _hostingEnvironment;
+        private readonly IConfiguration _configuration;
 
-        public Startup(IWebHostEnvironment env)
+        public Startup(IConfiguration configuration)
         {
-            _hostingEnvironment = env;
+            _configuration = configuration;
         }
 
-        public IServiceProvider ConfigureServices(IServiceCollection services)
+        public void ConfigureServices(IServiceCollection services)
         {
-            // Obtém a connection string do ambiente
             var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
 
-            services.AddAbpDbContext<WeFinanceDbContext>(options =>
+            if (string.IsNullOrEmpty(connectionString))
             {
-                DbContextOptionsConfigurer.Configure(options.DbContextOptions, connectionString);
-            });
+                throw new InvalidOperationException("A string de conexão não foi encontrada.");
+            }
 
-            services.AddControllersWithViews(options =>
-            {
-                options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
-            }).AddNewtonsoftJson();
+            services.AddDbContext<WeFinanceDbContext>(options =>
+                options.UseNpgsql(connectionString));
 
-            return services.AddAbp<WeFinanceWebModule>(options =>
-            {
-                options.IocManager.IocContainer.AddFacility<LoggingFacility>(
-                    f => f.UseAbpLog4Net().WithConfig(
-                        _hostingEnvironment.IsDevelopment()
-                            ? "log4net.config"
-                            : "log4net.Production.config"
-                    )
-                );
-            });
+            services.AddControllers();
         }
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            app.UseAbp(); //Initializes ABP framework.
-
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
             else
             {
-                app.UseExceptionHandler("/Error");
+                app.UseExceptionHandler("/Home/Error");
+                app.UseHsts();
             }
 
+            app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseRouting();
+            app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
+                endpoints.MapControllerRoute(
+                    name: "default",
+                    pattern: "{controller=Home}/{action=Index}/{id?}");
             });
         }
     }

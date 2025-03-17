@@ -32,6 +32,8 @@
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="7.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="7.0.12" />
+    <PackageReference Include="Npgsql" Version="7.0.6" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="7.0.11" />
     <PackageReference Include="System.Net.Primitives" Version="4.3.1" />
     <PackageReference Include="System.Net.NameResolution" Version="4.3.0" />
     <PackageReference Include="Castle.LoggingFacility.MsLogging" Version="3.1.0" />
@@ -39,10 +41,15 @@
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="7.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="7.0.10" />
     <PackageReference Include="Castle.Core" Version="5.1.1" />
-    <PackageReference Include="Abp.AspNetCore" Version="8.4.0" />
-    <PackageReference Include="Abp.Castle.Log4Net" Version="8.4.0" />
+    <PackageReference Include="Abp.AspNetCore" Version="7.4.0" />
+    <PackageReference Include="Abp.Castle.Log4Net" Version="7.4.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.12">
+	    <PrivateAssets>all</PrivateAssets>
+	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <DotNetCliToolReference Include="Microsoft.EntityFrameworkCore.Tools.DotNet" Version="2.0.0" />
+
   </ItemGroup>
 </Project>

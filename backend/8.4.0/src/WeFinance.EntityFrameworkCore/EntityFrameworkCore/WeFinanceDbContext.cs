@@ -1,16 +1,19 @@
 ﻿using Abp.EntityFrameworkCore;
+using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore;
 
 namespace WeFinance.EntityFrameworkCore
 {
     public class WeFinanceDbContext : AbpDbContext
     {
-        //Add DbSet properties for your entities...
 
-        public WeFinanceDbContext(DbContextOptions<WeFinanceDbContext> options) 
+        public WeFinanceDbContext(DbContextOptions<WeFinanceDbContext> options)
             : base(options)
         {
-
         }
+
+        public DbSet<Usuarios.User> Users { get; set; }
+
+
     }
 }
