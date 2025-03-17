@@ -22,13 +22,15 @@ namespace WeFinance.Web.Startup
         {
             _hostingEnvironment = env;
         }
-        
+
         public IServiceProvider ConfigureServices(IServiceCollection services)
         {
-            //Configure DbContext
+            // Obtém a connection string do ambiente
+            var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+
             services.AddAbpDbContext<WeFinanceDbContext>(options =>
             {
-                DbContextOptionsConfigurer.Configure(options.DbContextOptions, options.ConnectionString);
+                DbContextOptionsConfigurer.Configure(options.DbContextOptions, connectionString);
             });
 
             services.AddControllersWithViews(options =>
@@ -36,16 +38,14 @@ namespace WeFinance.Web.Startup
                 options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
             }).AddNewtonsoftJson();
 
-            //Configure Abp and Dependency Injection
             return services.AddAbp<WeFinanceWebModule>(options =>
             {
-                //Configure Log4Net logging
                 options.IocManager.IocContainer.AddFacility<LoggingFacility>(
                     f => f.UseAbpLog4Net().WithConfig(
                         _hostingEnvironment.IsDevelopment()
                             ? "log4net.config"
                             : "log4net.Production.config"
-                        )
+                    )
                 );
             });
         }

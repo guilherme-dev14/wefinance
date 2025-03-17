@@ -1,5 +1,8 @@
 ﻿using System.IO;
+using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
+using DotNetEnv;
+using System;
 
 namespace WeFinance.Web.Startup
 {
@@ -7,10 +10,11 @@ namespace WeFinance.Web.Startup
     {
         public static void Main(string[] args)
         {
-            var host = new WebHostBuilder()
-                .UseKestrel()
-                .UseContentRoot(Directory.GetCurrentDirectory())
-                .UseIISIntegration()
+            // Carrega as variáveis do .env
+            Env.Load();
+            var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+
+            var host = WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
                 .Build();
 
