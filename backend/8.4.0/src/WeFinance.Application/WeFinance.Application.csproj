@@ -12,9 +12,11 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\WeFinance.Core\WeFinance.Core.csproj" />
+    <ProjectReference Include="..\WeFinance.EntityFrameworkCore\WeFinance.EntityFrameworkCore.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Abp.EntityFrameworkCore" Version="7.4.0" />
     <PackageReference Include="Abp.AutoMapper" Version="7.4.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.3.0" />
   </ItemGroup>
 </Project>

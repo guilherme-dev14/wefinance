@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using WeFinance.EntityFrameworkCore;
@@ -11,9 +12,11 @@ using WeFinance.EntityFrameworkCore;
 namespace WeFinance.Migrations
 {
     [DbContext(typeof(WeFinanceDbContext))]
-    partial class WeFinanceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250318172638_CreateUserName")]
+    partial class CreateUserName
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

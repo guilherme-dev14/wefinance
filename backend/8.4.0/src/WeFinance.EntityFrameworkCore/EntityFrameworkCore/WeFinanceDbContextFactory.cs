@@ -1,25 +1,40 @@
-﻿using WeFinance.Configuration;
-using WeFinance.Web;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using Microsoft.Extensions.Configuration;
+using System;
+using System.IO;
+using DotNetEnv;
 
 namespace WeFinance.EntityFrameworkCore
 {
-    /* This class is needed to run EF Core PMC commands. Not used anywhere else */
     public class WeFinanceDbContextFactory : IDesignTimeDbContextFactory<WeFinanceDbContext>
     {
         public WeFinanceDbContext CreateDbContext(string[] args)
         {
-            var builder = new DbContextOptionsBuilder<WeFinanceDbContext>();
-            var configuration = AppConfigurations.Get(WebContentDirectoryFinder.CalculateContentRootFolder());
+            // Carregar o arquivo .env
+            var envPath = Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory()).FullName, "credenciais.env");
 
-            DbContextOptionsConfigurer.Configure(
-                builder,
-                configuration.GetConnectionString(WeFinanceConsts.ConnectionStringName)
-            );
+            if (File.Exists(envPath))
+            {
+                Env.Load(envPath);
+            }
+            else
+            {
 
-            return new WeFinanceDbContext(builder.Options);
+                Env.Load();
+            }
+
+            var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new InvalidOperationException(
+                    "A string de conexão não foi encontrada. Certifique-se de que a variável DB_CONNECTION_STRING está definida no arquivo .env.");
+            }
+
+            var optionsBuilder = new DbContextOptionsBuilder<WeFinanceDbContext>();
+            optionsBuilder.UseNpgsql(connectionString);
+
+            return new WeFinanceDbContext(optionsBuilder.Options);
         }
     }
 }
