@@ -34,9 +34,11 @@ namespace WeFinance.Web.Startup
             }
 
             services.AddAbpDbContext<WeFinanceDbContext>(options =>
-                options.UseNpgsql(connectionString));
+            {
+                options.DbContextOptions.UseNpgsql(connectionString);
+            });
 
-           // services.AddScoped<IRepository<User, long>, RepositoryBase<User, long>>();
+            // services.AddScoped<IRepository<User, long>, RepositoryBase<User, long>>();
 
             services.AddControllers();
             services.AddSwaggerGen(c =>
@@ -49,7 +51,7 @@ namespace WeFinance.Web.Startup
                 });
             });
         }
-    
+
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
