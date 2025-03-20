@@ -11,21 +11,21 @@ namespace WeFinance.Usuarios.DTOs
         public UserAutoMapper()
         {
             CreateMap<RegisterDTO, User>()
-                .ForMember(x => x.Name, opt => opt.MapFrom(x => x.Name))
+               .ForMember(x => x.Name, opt => opt.MapFrom(x => x.Name))
                 .ForMember(x => x.Email, opt => opt.MapFrom(x => x.Email))
                 .ForMember(x => x.Username, opt => opt.MapFrom(x => x.Username))
-                .ForMember(x => x.PasswordHash, opt => opt.MapFrom(x => HashPassword(x.Password)))
+                .ForMember(x => x.PasswordHash, opt => opt.MapFrom(x => x.Password != null ? HashPassword(x.Password) : null))
                 .ForMember(x => x.CreatedAt, opt => opt.MapFrom(x => DateTime.UtcNow));
 
             CreateMap<User, RegisterDTO>()
                 .ForMember(x => x.Name, opt => opt.MapFrom(x => x.Name))
                 .ForMember(x => x.Email, opt => opt.MapFrom(x => x.Email))
                 .ForMember(x => x.Username, opt => opt.MapFrom(x => x.Username))
-                .ForMember(x => x.Password, opt => opt.MapFrom(x => x.PasswordHash));
+                .ForMember(x => x.Password, opt => opt.Ignore());
 
-            CreateMap<LoginDTO, User>()
-                .ForMember(x => x.Username, opt => opt.MapFrom(x => x.Username))
-                .ForMember(x => x.PasswordHash, opt => opt.Ignore());
+             CreateMap<LoginDTO, User>()
+                 .ForMember(x => x.Username, opt => opt.MapFrom(x => x.Username))
+                 .ForMember(x => x.PasswordHash, opt => opt.Ignore());
 
             CreateMap<User, LoginDTO>()
                 .ForMember(x => x.Username, opt => opt.MapFrom(x => x.Username))
@@ -34,8 +34,12 @@ namespace WeFinance.Usuarios.DTOs
 
         private static string HashPassword(string password)
         {
+            if (string.IsNullOrEmpty(password))
+                throw new ArgumentException("A senha não pode ser nula ou vazia");
+
             using (var sha256 = SHA256.Create())
             {
+              
                 var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
                 return Convert.ToBase64String(bytes);
             }

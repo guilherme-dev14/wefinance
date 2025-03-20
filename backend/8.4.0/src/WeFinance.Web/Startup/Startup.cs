@@ -1,86 +1,180 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System;
+using System.Linq;
+using System.Reflection;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using System;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using WeFinance.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Castle.Facilities.Logging;
+using Abp.AspNetCore;
+using Abp.AspNetCore.Mvc.Antiforgery;
+using Abp.Castle.Logging.Log4Net;
+using Abp.Extensions;
+using WeFinance.Configuration;
+//using Abp.AspNetCore.SignalR.Hubs;
+using Abp.Dependency;
+using Abp.Json;
+using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
-using Abp.Domain.Repositories;
-using Abp.EntityFrameworkCore;
-using WeFinance.Usuarios.AppService;
-using WeFinance.Models;
+using Newtonsoft.Json.Serialization;
+using System.IO;
+using WeFinance.Identity;
 
 namespace WeFinance.Web.Startup
 {
     public class Startup
     {
-        private readonly IConfiguration _configuration;
+        private const string _defaultCorsPolicyName = "localhost";
 
-        public Startup(IConfiguration configuration)
+        private const string _apiVersion = "v1";
+
+        private readonly IConfigurationRoot _appConfiguration;
+        private readonly IWebHostEnvironment _hostingEnvironment;
+
+        public Startup(IWebHostEnvironment env)
         {
-            _configuration = configuration;
+            _hostingEnvironment = env;
+            _appConfiguration = env.GetAppConfiguration();
         }
-        public IConfiguration Configuration { get; }
 
         public void ConfigureServices(IServiceCollection services)
         {
-            var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
-
-            if (string.IsNullOrEmpty(connectionString))
+            //MVC
+            services.AddControllersWithViews(
+                options => { options.Filters.Add(new AbpAutoValidateAntiforgeryTokenAttribute()); }
+            ).AddNewtonsoftJson(options =>
             {
-                throw new InvalidOperationException("A string de conexão não foi encontrada.");
-            }
-
-            services.AddAbpDbContext<WeFinanceDbContext>(options =>
-            {
-                options.DbContextOptions.UseNpgsql(connectionString);
-            });
-
-            // services.AddScoped<IRepository<User, long>, RepositoryBase<User, long>>();
-
-            services.AddControllers();
-            services.AddSwaggerGen(c =>
-            {
-                c.SwaggerDoc("v1", new OpenApiInfo
+                options.SerializerSettings.ContractResolver = new AbpMvcContractResolver(IocManager.Instance)
                 {
-                    Version = "v1",
-                    Title = "WeFinance API",
-                    Description = "API do WeFinance"
-                });
+                    NamingStrategy = new CamelCaseNamingStrategy()
+                };
             });
+
+            IdentityRegistrar.Register(services);
+            AuthConfigurer.Configure(services, _appConfiguration);
+
+            services.AddSignalR();
+
+            // Configure CORS for angular2 UI
+            services.AddCors(
+                options => options.AddPolicy(
+                    _defaultCorsPolicyName,
+                    builder => builder
+                        .WithOrigins(
+                            // App:CorsOrigins in appsettings.json can contain more than one address separated by comma.
+                            _appConfiguration["App:CorsOrigins"]
+                                .Split(",", StringSplitOptions.RemoveEmptyEntries)
+                                .Select(o => Abp.Extensions.StringExtensions.RemovePostFix(o, "/"))
+                                .ToArray()
+                        )
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials()
+                )
+            );
+
+            // Swagger - Enable this line and the related lines in Configure method to enable swagger UI
+            ConfigureSwagger(services);
+
+            // Configure Abp and Dependency Injection
+            services.AddAbpWithoutCreatingServiceProvider<WeFinanceWebModule>(
+                // Configure Log4Net logging
+                options => options.IocManager.IocContainer.AddFacility<LoggingFacility>(
+                    f => f.UseAbpLog4Net().WithConfig(_hostingEnvironment.IsDevelopment()
+                        ? "log4net.config"
+                        : "log4net.Production.config"
+                    )
+                )
+            );
         }
 
-
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)
         {
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-            }
-            else
-            {
-                app.UseExceptionHandler("/Home/Error");
-                app.UseHsts();
-            }
+            app.UseAbp(options => { options.UseAbpRequestLocalization = false; }); // Initializes ABP framework.
 
-            app.UseHttpsRedirection();
+            app.UseCors(_defaultCorsPolicyName); // Enable CORS!
+
             app.UseStaticFiles();
+
             app.UseRouting();
+
+            app.UseAuthentication();
             app.UseAuthorization();
 
-            app.UseSwagger();
-            app.UseSwaggerUI(c =>
-            {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "WeFinance API v1");
-                c.RoutePrefix = string.Empty; 
-            });
-
+            app.UseAbpRequestLocalization();
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllers();
+               // endpoints.MapHub<AbpCommonHub>("/signalr");
+                endpoints.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
+                endpoints.MapControllerRoute("defaultWithArea", "{area}/{controller=Home}/{action=Index}/{id?}");
+            });
+
+            // Enable middleware to serve generated Swagger as a JSON endpoint
+            app.UseSwagger(c => { c.RouteTemplate = "swagger/{documentName}/swagger.json"; });
+
+            // Enable middleware to serve swagger-ui assets (HTML, JS, CSS etc.)
+            app.UseSwaggerUI(options =>
+            {
+                // specifying the Swagger JSON endpoint.
+                options.SwaggerEndpoint($"/swagger/{_apiVersion}/swagger.json", $"WeFinance API {_apiVersion}");
+                options.IndexStream = () => Assembly.GetExecutingAssembly()
+                    .GetManifestResourceStream("WeFinance.Web.Host.wwwroot.swagger.ui.index.html");
+                options.DisplayRequestDuration(); // Controls the display of the request duration (in milliseconds) for "Try it out" requests.  
+            }); // URL: /swagger
+        }
+
+        private void ConfigureSwagger(IServiceCollection services)
+        {
+            services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc(_apiVersion, new OpenApiInfo
+                {
+                    Version = _apiVersion,
+                    Title = "WeFinance API",
+                    Description = "WeFinance",
+                    // uncomment if needed TermsOfService = new Uri("https://example.com/terms"),
+                    Contact = new OpenApiContact
+                    {
+                        Name = "WeFinance",
+                        Email = string.Empty,
+                        Url = new Uri("https://twitter.com/aspboilerplate"),
+                    },
+                    License = new OpenApiLicense
+                    {
+                        Name = "MIT License",
+                        Url = new Uri("https://github.com/aspnetboilerplate/aspnetboilerplate/blob/dev/LICENSE"),
+                    }
+                });
+                options.DocInclusionPredicate((docName, description) => true);
+
+                // Define the BearerAuth scheme that's in use
+                options.AddSecurityDefinition("bearerAuth", new OpenApiSecurityScheme()
+                {
+                    Description =
+                        "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+                    Name = "Authorization",
+                    In = ParameterLocation.Header,
+                    Type = SecuritySchemeType.ApiKey
+                });
+
+                //add summaries to swagger
+                bool canShowSummaries = _appConfiguration.GetValue<bool>("Swagger:ShowSummaries");
+                if (canShowSummaries)
+                {
+                    var hostXmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                    var hostXmlPath = Path.Combine(AppContext.BaseDirectory, hostXmlFile);
+                    options.IncludeXmlComments(hostXmlPath);
+
+                    var applicationXml = $"WeFinance.Application.xml";
+                    var applicationXmlPath = Path.Combine(AppContext.BaseDirectory, applicationXml);
+                    options.IncludeXmlComments(applicationXmlPath);
+
+                    var webCoreXmlFile = $"WeFinance.Web.Core.xml";
+                    var webCoreXmlPath = Path.Combine(AppContext.BaseDirectory, webCoreXmlFile);
+                    options.IncludeXmlComments(webCoreXmlPath);
+                }
             });
         }
     }

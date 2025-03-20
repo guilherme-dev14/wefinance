@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore.Design;
 using System;
 using System.IO;
 using DotNetEnv;
+using Microsoft.Extensions.Configuration;
+using WeFinance.Configuration;
+using WeFinance.Web;
 
 namespace WeFinance.EntityFrameworkCore
 {
@@ -11,30 +14,38 @@ namespace WeFinance.EntityFrameworkCore
         public WeFinanceDbContext CreateDbContext(string[] args)
         {
             // Carregar o arquivo .env
-            var envPath = Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory()).FullName, "credenciais.env");
+            //  var envPath = Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory()).FullName, "credenciais.env");
 
-            if (File.Exists(envPath))
-            {
-                Env.Load(envPath);
-            }
-            else
-            {
+            //if (File.Exists(envPath))
+            //{
+            //    Env.Load(envPath);
+            //}
+            //else
+            //{
+            //    Env.Load();
+            //}
+            //var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
 
-                Env.Load();
-            }
+            var builder = new DbContextOptionsBuilder<WeFinanceDbContext>();
 
-            var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+            var configuration = AppConfigurations.Get(WebContentDirectoryFinder.CalculateContentRootFolder());
 
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                throw new InvalidOperationException(
-                    "A string de conexão não foi encontrada. Certifique-se de que a variável DB_CONNECTION_STRING está definida no arquivo .env.");
-            }
+            DbContextOptionsConfigurer.Configure(builder, configuration.GetConnectionString(WeFinanceConsts.ConnectionStringName));
 
-            var optionsBuilder = new DbContextOptionsBuilder<WeFinanceDbContext>();
-            optionsBuilder.UseNpgsql(connectionString);
+            //if (string.IsNullOrEmpty(connectionString))
+            //{
+            //    throw new InvalidOperationException(
+            //        "A string de conexão não foi encontrada. Certifique-se de que a variável DB_CONNECTION_STRING está definida no arquivo .env.");
+            //}
 
-            return new WeFinanceDbContext(optionsBuilder.Options);
+            //var optionsBuilder = new DbContextOptionsBuilder<WeFinanceDbContext>();
+
+            //// Usar postgre
+            ////optionsBuilder.UseNpgsql(connectionString);
+
+            //optionsBuilder.UseSqlServer(connectionString);
+
+            return new WeFinanceDbContext(builder.Options);
         }
     }
 }
